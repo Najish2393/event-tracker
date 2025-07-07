@@ -114,7 +114,9 @@ jobs:
         run: |
           echo "Waiting 15 seconds for the service to start..."
           sleep 15
-
+      - name: Debug EC2 Host (REMOVE AFTER DEBUGGING)
+        run: |
+          echo "Value of EC2_HOST: '${{ env.EC2_HOST }}'"
       - name: Test service endpoint
         run: |
           SERVICE_URL="http://${{ env.EC2_HOST }}:${{ env.APP_EXTERNAL_PORT }}/events"
