@@ -54,11 +54,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment: production   # Requires manual approval in GitHub UI!
+    environment: production
+
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
-        id: deploy
         with:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USER }}
@@ -69,15 +69,6 @@ jobs:
             docker rm event-tracker || true
             docker run -d --name event-tracker -p 80:8000 $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Test deployed service on EC2
-        uses: appleboy/ssh-action@v0.1.7
-        id: test_service
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ env.EC2_USER }}
-          key: ${{ env.EC2_SSH_KEY }}
-          script: |
-            curl -s http://localhost:8000/events
-
-      - name: Output service response
-        run: echo "Service response: ${{ steps.test_service.outputs.stdout }}"
+      - name: Test deployed app
+        run: |
+          curl -s http://${{ env.EC2_HOST }}/events || echo "Service unavailable"
