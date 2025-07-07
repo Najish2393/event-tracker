@@ -1,9 +1,12 @@
-version: '3.8'
+FROM python:3.11-slim-buster
 
-services:
-  event-tracker:
-    image:746669228858.dkr.ecr.us-east-1.amazonaws.com/event-tracker:latest
-    ports:
-      # Maps EC2 external port 80 to container internal port 8000
-      - "80:8000"
-    restart: always
+WORKDIR /app
+
+COPY eventcode/requirement.txt .
+RUN pip install --no-cache-dir -r requirement.txt
+
+COPY eventcode/app.py .
+
+EXPOSE 8000
+
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]
