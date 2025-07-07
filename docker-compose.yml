@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   event-tracker:
-    image: ${ECR_FULL_IMAGE_URI:-your-default-image-name}
+    # IMPORTANT: Replace 'YOUR_FULL_ECR_IMAGE_URI' with your actual ECR URI.
+    # You can find this in your AWS ECR console (e.g., 123456789012.dkr.ecr.your-region.amazonaws.com/your-repo-name)
+    image: 746669228858.dkr.ecr.us-east-1.amazonaws.com/event-tracker:latest
     ports:
-      - "80:8000"
+      # Maps EC2 external port 80 to container internal port 5000
+      - "80:5000"
     restart: always
