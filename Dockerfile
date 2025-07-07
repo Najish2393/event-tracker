@@ -1,13 +1,9 @@
-FROM python:3.11-slim
+version: '3.8'
 
-WORKDIR /app
-
-# Correct filename here
-COPY eventcode/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY eventcode/event.py .
-
-EXPOSE 8000
-
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "event:app"]
+services:
+  event-tracker:
+    image:746669228858.dkr.ecr.us-east-1.amazonaws.com/event-tracker:latest
+    ports:
+      # Maps EC2 external port 80 to container internal port 8000
+      - "80:8000"
+    restart: always
