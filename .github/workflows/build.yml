@@ -31,6 +31,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Debug ECR Secrets (REMOVE AFTER DEBUGGING)
+        run: |
+          echo "ECR_REGISTRY value: ${{ secrets.ECR_REGISTRY }}"
+          echo "ECR_REPOSITORY value: ${{ secrets.ECR_REPOSITORY }}"
+          echo "ECR_FULL_IMAGE_URI value: ${{ env.ECR_FULL_IMAGE_URI }}"
+
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
