@@ -9,4 +9,4 @@ COPY eventcode/event.py .
 
 EXPOSE 8000
 
-CMD ["python", "event.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "event:app"]
