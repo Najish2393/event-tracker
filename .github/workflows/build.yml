@@ -7,14 +7,12 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  # Ensure ECR_REPOSITORY_URI secret holds the full URI (e.g., 123456789012.dkr.ecr.your-region.amazonaws.com/your-repo-name)
-  ECR_REPOSITORY_URI: ${{ secrets.ECR_REPOSITORY_URI }}
-  # ECR_REPOSITORY_NAME is just the name part, used for clarity in some places but not for full Docker image refs
-  ECR_REPOSITORY_NAME: ${{ secrets.ECR_REPOSITORY }}
+  # Construct the full ECR image URI from ECR_REGISTRY and ECR_REPOSITORY secrets
+  ECR_FULL_IMAGE_URI: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}
   EC2_HOST: ${{ secrets.EC2_HOST }}
   EC2_USER: ${{ secrets.EC2_USER }}
   EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-  APP_INTERNAL_PORT: 8000 # Internal port of your Flask app in the Dockerfile
+  APP_INTERNAL_PORT: 5000 # Internal port of your Flask app in the Dockerfile
   APP_EXTERNAL_PORT: 80   # External port exposed on the EC2 instance
 
 jobs:
@@ -31,27 +29,33 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Debug ECR Secrets (REMOVE AFTER DEBUGGING)
-        run: |
-          echo "ECR_REGISTRY value: ${{ secrets.ECR_REGISTRY }}"
-          echo "ECR_REPOSITORY value: ${{ secrets.ECR_REPOSITORY }}"
-          echo "ECR_FULL_IMAGE_URI value: ${{ env.ECR_FULL_IMAGE_URI }}"
-
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry: ${{ secrets.ECR_REGISTRY }} # Use the ECR_REGISTRY secret for login
+
+      # --- DEBUG STEP: THIS WILL SHOW YOU THE SECRET VALUES IN THE LOGS ---
+      - name: Debug ECR Secrets (CHECK THIS STEP'S LOGS!)
+        run: |
+          echo "--- DEBUGGING ECR SECRETS ---"
+          echo "Value of secrets.ECR_REGISTRY: '${{ secrets.ECR_REGISTRY }}'"
+          echo "Value of secrets.ECR_REPOSITORY: '${{ secrets.ECR_REPOSITORY }}'"
+          echo "Constructed ECR_FULL_IMAGE_URI: '${{ env.ECR_FULL_IMAGE_URI }}'"
+          echo "--- END DEBUG ---"
+      # --- END DEBUG STEP ---
 
       - name: Build and tag Docker image
         run: |
           # Build the image with the full ECR URI and the unique Git SHA
-          docker build -t ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }} .
+          docker build -t ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }} .
           # Also tag with 'latest' for convenience, but deployments will use SHA
-          docker tag ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }} ${{ env.ECR_REPOSITORY_URI }}:latest
+          docker tag ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }} ${{ env.ECR_FULL_IMAGE_URI }}:latest
 
       - name: Scan Docker image with Trivy and generate report
         uses: aquasecurity/trivy-action@master
         with:
           # Scan the uniquely tagged image
-          image-ref: ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }}
+          image-ref: ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }}
           format: json
           output: trivy-report.json
           severity: CRITICAL,HIGH,MEDIUM,LOW
@@ -64,13 +68,13 @@ jobs:
 
       - name: Push Docker image to Amazon ECR
         run: |
-          docker push ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }}
-          docker push ${{ env.ECR_REPOSITORY_URI }}:latest
+          docker push ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }}
+          docker push ${{ env.ECR_FULL_IMAGE_URI }}:latest
 
       - name: Echo Build and Push Success
         run: |
           echo "--- Docker Image Built and Pushed to ECR Successfully ---"
-          echo "Image pushed: ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }}"
+          echo "Image pushed: ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }}"
 
   deploy:
     needs: build
@@ -86,18 +90,14 @@ jobs:
           key: ${{ env.EC2_SSH_KEY }}
           script: |
             echo "--- Starting Deployment to EC2 ---"
-            # Authenticate Docker with ECR on the EC2 instance
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_REPOSITORY_URI }}
-            echo "Pulling image: ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }}"
-            # Pull the specific image that was just built and pushed
-            docker pull ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }}
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+            echo "Pulling image: ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }}"
+            docker pull ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }}
             echo "Stopping and removing old container (if any)..."
-            # Use the consistent container name 'event-tracker'
             docker stop event-tracker || true
             docker rm event-tracker || true
             echo "Running new container..."
-            # Run the new container, mapping the external port to the internal Flask port
-            docker run -d --name event-tracker -p ${{ env.APP_EXTERNAL_PORT }}:${{ env.APP_INTERNAL_PORT }} ${{ env.ECR_REPOSITORY_URI }}:${{ github.sha }}
+            docker run -d --name event-tracker -p ${{ env.APP_EXTERNAL_PORT }}:${{ env.APP_INTERNAL_PORT }} ${{ env.ECR_FULL_IMAGE_URI }}:${{ github.sha }}
             echo "Deployment complete! Service should be running on port ${{ env.APP_EXTERNAL_PORT }}."
             echo "Verify with: docker ps"
             echo "Check logs with: docker logs event-tracker"
