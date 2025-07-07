@@ -6,9 +6,9 @@ on:
       - main
 
 env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  AWS_REGION: ${{ secrets.AWS_REGION }}
   EC2_HOST: ${{ secrets.EC2_HOST }}
   EC2_USER: ${{ secrets.EC2_USER }}
   EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
@@ -16,8 +16,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -29,7 +31,7 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build Docker image
+      - name: Build and tag Docker image
         run: |
           docker build -t $ECR_REPOSITORY .
           docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -37,27 +39,27 @@ jobs:
       - name: Scan Docker image and generate report
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: $ECR_REPOSITORY:latest
+          image-ref: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
           format: json
           output: trivy-report.json
           severity: CRITICAL,HIGH,MEDIUM,LOW
 
-      - name: Upload Trivy scan report artifact
+      - name: Upload Trivy scan report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-report
           path: trivy-report.json
 
-      - name: Push Docker image to ECR
+      - name: Push Docker image to Amazon ECR
         run: docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment: production
+    environment: production  # Manual approval step enabled via GitHub Environment
 
     steps:
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ env.EC2_HOST }}
@@ -69,6 +71,6 @@ jobs:
             docker rm event-tracker || true
             docker run -d --name event-tracker -p 80:8000 $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Test deployed app
+      - name: Test deployed application
         run: |
           curl -s http://${{ env.EC2_HOST }}/events || echo "Service unavailable"
