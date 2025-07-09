@@ -88,14 +88,11 @@ jobs:
           key: ${{ env.EC2_SSH_KEY }}
           script: |
             echo "--- Starting Deployment with Docker Compose on EC2 ---"
-            cd /home/${{ env.EC2_USER }}/ # Navigate to the directory where docker-compose.yml was copied
-
-            # Authenticate Docker with ECR on the EC2 instance
-            # Use the ECR_FULL_IMAGE_URI for login, as it's the full path
+            cd /home/${{ env.EC2_USER }}/
+            
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_FULL_IMAGE_URI }}
 
             echo "Pulling latest image for Docker Compose..."
-            # docker compose pull will now correctly find the image because it's hardcoded in docker-compose.yml
             docker compose pull
 
             echo "Stopping and removing old services (if any)..."
@@ -106,6 +103,4 @@ jobs:
 
             echo "Deployment complete! Services should be running."
             echo "Verify with: docker compose ps"
-            echo "Check logs with: docker compose logs"
-            echo "--- Deployment with Docker Compose Finished Successfully! ---"
             echo "Service should be accessible at http://${{ env.EC2_HOST }}:${{ env.APP_EXTERNAL_PORT }}"
