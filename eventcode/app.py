@@ -26,7 +26,7 @@ def track_event():
     except Exception as e:
         print(f"Error tracking event: {e}")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
-
+#review
 @app.route('/events', methods=['GET'])
 def get_event_counts():
     return jsonify(event_counts), 200
