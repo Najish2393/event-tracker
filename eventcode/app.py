@@ -13,31 +13,20 @@ def home():
 
 @app.route('/event', methods=['POST'])
 def track_event():
-    try:
-        data = request.get_json()
-        if not data or 'event' not in data:
-            return jsonify({"error": "Missing 'event' field in JSON payload"}), 400
+    data = request.get_json()
+    event_name = data['event']
+    event_counts[event_name] = event_counts.get(event_name, 0) + 1
+    return jsonify({"message": f"Event '{event_name}' tracked successfully"}), 200
 
-        event_name = data['event']
-        event_counts[event_name] = event_counts.get(event_name, 0) + 1
-        print(f"Event '{event_name}' tracked. Current count: {event_counts[event_name]}")
-        return jsonify({"message": f"Event '{event_name}' tracked successfully"}), 200
-
-    except Exception as e:
-        print(f"Error tracking event: {e}")
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
-#review
 @app.route('/events', methods=['GET'])
 def get_event_counts():
     return jsonify(event_counts), 200
 
 @app.route('/reset', methods=['DELETE'])
 def reset_events():
-    global event_counts
-    event_counts = {}
-    print("All event counts have been reset.")
+    event_counts.clear()
     return jsonify({"message": "All event counts reset successfully"}), 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8000)) # Changed default to 8000 for consistency
+    port = int(os.environ.get('PORT', 8000))
     app.run(debug=True, host='0.0.0.0', port=port)
