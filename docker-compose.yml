@@ -4,6 +4,5 @@ services:
   event-tracker:
     image: 746669228858.dkr.ecr.us-east-1.amazonaws.com/event-tracker:latest
     ports:
-      # Maps EC2 external port 80 to container internal port 8000
       - "80:8000"
     restart: always
