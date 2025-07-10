@@ -26,7 +26,7 @@ def get_event_counts():
 def reset_events():
     event_counts.clear()
     return jsonify({"message": "All event counts reset successfully"}), 200
-
+#test
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
     app.run(debug=True, host='0.0.0.0', port=port)
