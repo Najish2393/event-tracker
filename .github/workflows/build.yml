@@ -65,11 +65,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment: production # Requires manual approval in GitHub UI if configured!
+    environment: production 
 
     steps:
       - name: Checkout code for Deployment
-        uses: actions/checkout@v4 # Essential to make repository files available in this job
+        uses: actions/checkout@v4 
 
       - name: Copy docker-compose.yml to EC2
         uses: appleboy/scp-action@v0.1.4
@@ -77,8 +77,8 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USER }}
           key: ${{ env.EC2_SSH_KEY }}
-          source: docker-compose.yml # Path relative to the repository root
-          target: /home/${{ env.EC2_USER }}/ # Target directory on EC2 (ensure this path exists and is writable)
+          source: docker-compose.yml 
+          target: /home/${{ env.EC2_USER }}/
 
       - name: Deploy with Docker Compose via SSH
         uses: appleboy/ssh-action@v0.1.7
